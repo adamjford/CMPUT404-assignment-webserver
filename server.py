@@ -1,5 +1,5 @@
 #  coding: utf-8 
-import SocketServer
+import SocketServer, os.path, time
 
 # Copyright 2013 Abram Hindle, Eddie Antonio Santos
 # 
@@ -28,11 +28,62 @@ import SocketServer
 
 
 class MyWebServer(SocketServer.BaseRequestHandler):
-    
+
+    def get(self, path, headers_only):
+        if path == '/':
+            path = '/index.html'
+
+        if path[0] != '/':
+            path = '/' + path
+
+        file_path = './www' + path
+
+        response = ''
+
+        # Written by rslite (http://stackoverflow.com/users/15682/rslite) on StackOverflow
+        # http://stackoverflow.com/a/82852 (CC-BY-SA 3.0)
+        if os.path.isfile(file_path):
+            contents = ''
+
+            # Source: https://docs.python.org/2/tutorial/inputoutput.html
+            with open(file_path) as f:
+                contents = f.read()
+
+            headers = [
+                    '200 OK',
+                    'Server: MyWebServer/0.1 Python/2.7',
+                    'Content-type: text/html',
+                    'Content-Length: %d' % len(contents),
+                    # From https://docs.python.org/2/library/os.path.html#os.path.getmtime
+                    # and https://docs.python.org/2/library/time.html
+                    'Last-Modified: %s' % time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.gmtime(os.path.getmtime(file_path)))
+                    ]
+
+            response = '\r\n'.join(headers) + '\r\n\r\n'
+
+            if not headers_only:
+                # From https://docs.python.org/2/library/stdtypes.html#string-methods
+                response += contents.replace('\n', '\r\n')
+
+        return response
+
     def handle(self):
         self.data = self.request.recv(1024).strip()
-        print ("Got a request of: %s\n" % self.data)
-        self.request.sendall("OK")
+        print ("Got a request of: \n%s\n" % self.data)
+
+        response = ''
+
+        first_line = self.data.split('\r\n')[0]
+
+        split_line = first_line.split(' ')
+
+        method = split_line[0]
+
+        if method == 'GET' or method == 'HEAD':
+            response = self.get(split_line[1], method == 'HEAD')
+            self.request.sendall(response)
+        else:
+            self.request.sendall("501 Not Implemented\r\n")
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080

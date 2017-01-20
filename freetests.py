@@ -34,6 +34,7 @@ class TestYourWebserver(unittest.TestCase):
     def test_get_root(self):
         url = self.baseurl + "/"
         req = urllib2.urlopen(url, None, 3)
+        print req
         self.assertTrue( req.getcode()  == 200 , "200 OK Not FOUND!")
 
     def test_get_indexhtml(self):
