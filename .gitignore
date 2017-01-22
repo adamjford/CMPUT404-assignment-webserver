@@ -37,3 +37,6 @@ nosetests.xml
 
 # PyCharm
 .idea/
+
+# Files produced by unit tests
+www/hardcode/
