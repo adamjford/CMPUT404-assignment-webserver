@@ -1,5 +1,6 @@
 #  coding: utf-8 
-import SocketServer, os.path, time
+import SocketServer, os.path, time, datetime
+
 
 # Copyright 2013 Abram Hindle, Eddie Antonio Santos
 # 
@@ -28,13 +29,9 @@ import SocketServer, os.path, time
 
 
 class MyWebServer(SocketServer.BaseRequestHandler):
-
     def get(self, path):
-        if path == '/':
-            path = '/index.html'
-
-        if path[0] != '/':
-            path = '/' + path
+        if path[-1] == '/':
+            path += 'index.html'
 
         file_path = './www' + path
 
@@ -43,28 +40,44 @@ class MyWebServer(SocketServer.BaseRequestHandler):
         # Written by rslite (http://stackoverflow.com/users/15682/rslite) on StackOverflow
         # http://stackoverflow.com/a/82852 (CC-BY-SA 3.0)
         if os.path.isfile(file_path):
-            contents = ''
+            # There's a file at that path, so let's serve it
 
             # Source: https://docs.python.org/2/tutorial/inputoutput.html
             with open(file_path) as f:
                 contents = f.read()
 
             headers = [
-                    # Source: Example GET from class slides
-                    # https://eclass.srv.ualberta.ca/pluginfile.php/3259365/mod_resource/content/2/04-HTTP.pdf
-                    'HTTP/1.1 200 OK',
-                    'Server: MyWebServer/0.1 Python/2.7',
-                    'Content-type: text/html',
-                    # From https://docs.python.org/2/library/os.path.html#os.path.getsize
-                    'Content-Length: %d' % os.path.getsize(file_path),
-                    # From https://docs.python.org/2/library/os.path.html#os.path.getmtime
-                    # and https://docs.python.org/2/library/time.html
-                    'Last-Modified: %s' % time.strftime('%a, %d %b %Y %H:%M:%S %Z',
-                                                        time.gmtime(os.path.getmtime(file_path)))
-                    ]
+                # Source: Example GET from class slides
+                # https://eclass.srv.ualberta.ca/pluginfile.php/3259365/mod_resource/content/2/04-HTTP.pdf
+                'HTTP/1.1 200 OK',
+                'Server: MyWebServer/0.1 Python/2.7',
+                'Content-type: text/html',
+                # From https://docs.python.org/2/library/os.path.html#os.path.getsize
+                'Content-Length: %d' % os.path.getsize(file_path),
+                'Date: %s' % format_date_now(),
+                # From https://docs.python.org/2/library/os.path.html#os.path.getmtime
+                'Last-Modified: %s' % format_date(time.gmtime(os.path.getmtime(file_path)))
+            ]
 
             response = '\r\n'.join(headers) + '\r\n\r\n'
             response += contents
+        elif os.path.isdir(file_path):
+            # Means we ended up here by /foo
+            # so redirect to /foo/ via 301 Moved Permanently
+            # Based on behaviour/output of SimpleHTTPServer in same case
+
+            now = format_date_now()
+
+            headers = [
+                'HTTP/1.1 301 Moved Permanently',
+                'Server: MyWebServer/0.1 Python/2.7',
+                'Date: %s' % now,
+                'Location: %s' % (path + '/')
+            ]
+
+            response = '\r\n'.join(headers)
+
+            print response
 
         return response
 
@@ -85,6 +98,21 @@ class MyWebServer(SocketServer.BaseRequestHandler):
             self.request.sendall(response)
         else:
             self.request.sendall("501 Not Implemented\r\n")
+
+
+def format_date(time_to_format):
+    # from https://docs.python.org/2/library/time.html
+    format_string = '%a, %d %b %Y %H:%M:%S GMT'
+
+    if time_to_format is None:
+        return time.strftime(format_string, time.gmtime())
+
+    return time.strftime(format_string, time_to_format)
+
+
+def format_date_now():
+    # From https://docs.python.org/2/library/datetime.html#datetime.datetime.now
+    return format_date(None)
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080
