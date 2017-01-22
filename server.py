@@ -1,5 +1,5 @@
 #  coding: utf-8 
-import SocketServer, os.path, time, datetime
+import SocketServer, os.path, time, mimetypes
 
 
 # Copyright 2013 Abram Hindle, Eddie Antonio Santos
@@ -55,7 +55,8 @@ class MyWebServer(SocketServer.BaseRequestHandler):
                     # https://eclass.srv.ualberta.ca/pluginfile.php/3259365/mod_resource/content/2/04-HTTP.pdf
                     'HTTP/1.1 200 OK',
                     'Server: MyWebServer/0.1 Python/2.7',
-                    'Content-type: text/html',
+                    # From https://docs.python.org/2/library/mimetypes.html
+                    'Content-type: %s' % mimetypes.guess_type(file_path)[0],
                     # From https://docs.python.org/2/library/os.path.html#os.path.getsize
                     'Content-Length: %d' % os.path.getsize(file_path),
                     'Date: %s' % format_date_now(),
@@ -89,8 +90,6 @@ class MyWebServer(SocketServer.BaseRequestHandler):
         self.content_dir = os.path.abspath('./www/')
         self.data = self.request.recv(1024).strip()
         print ("Got a request of: \n%s\n" % self.data)
-
-        response = ''
 
         first_line = self.data.split('\r\n')[0]
 
