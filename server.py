@@ -29,7 +29,7 @@ import SocketServer, os.path, time
 
 class MyWebServer(SocketServer.BaseRequestHandler):
 
-    def get(self, path, headers_only):
+    def get(self, path):
         if path == '/':
             path = '/index.html'
 
@@ -50,20 +50,21 @@ class MyWebServer(SocketServer.BaseRequestHandler):
                 contents = f.read()
 
             headers = [
-                    '200 OK',
+                    # Source: Example GET from class slides
+                    # https://eclass.srv.ualberta.ca/pluginfile.php/3259365/mod_resource/content/2/04-HTTP.pdf
+                    'HTTP/1.1 200 OK',
                     'Server: MyWebServer/0.1 Python/2.7',
                     'Content-type: text/html',
-                    'Content-Length: %d' % len(contents),
+                    # From https://docs.python.org/2/library/os.path.html#os.path.getsize
+                    'Content-Length: %d' % os.path.getsize(file_path),
                     # From https://docs.python.org/2/library/os.path.html#os.path.getmtime
                     # and https://docs.python.org/2/library/time.html
-                    'Last-Modified: %s' % time.strftime('%a, %d %b %Y %H:%M:%S %Z', time.gmtime(os.path.getmtime(file_path)))
+                    'Last-Modified: %s' % time.strftime('%a, %d %b %Y %H:%M:%S %Z',
+                                                        time.gmtime(os.path.getmtime(file_path)))
                     ]
 
             response = '\r\n'.join(headers) + '\r\n\r\n'
-
-            if not headers_only:
-                # From https://docs.python.org/2/library/stdtypes.html#string-methods
-                response += contents.replace('\n', '\r\n')
+            response += contents
 
         return response
 
@@ -79,8 +80,8 @@ class MyWebServer(SocketServer.BaseRequestHandler):
 
         method = split_line[0]
 
-        if method == 'GET' or method == 'HEAD':
-            response = self.get(split_line[1], method == 'HEAD')
+        if method == 'GET':
+            response = self.get(split_line[1])
             self.request.sendall(response)
         else:
             self.request.sendall("501 Not Implemented\r\n")
