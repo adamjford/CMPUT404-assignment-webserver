@@ -34,10 +34,11 @@ class MyWebServer(SocketServer.BaseRequestHandler):
             path += 'index.html'
 
         file_path = './www' + path
+        abs_path = os.path.abspath(file_path)
 
         # From https://docs.python.org/2/library/os.path.html
         if not os.path.exists(file_path) \
-                or self.content_dir not in os.path.abspath(file_path):
+                or self.content_dir not in abs_path:
             # 404
             return self.not_found()
         else:
@@ -99,11 +100,20 @@ class MyWebServer(SocketServer.BaseRequestHandler):
             response = self.get(split_line[1])
             self.request.sendall(response)
         else:
-            self.request.sendall("HTTP/1.1 501 Not Implemented\r\n")
+            self.request.sendall(self.not_allowed())
 
     def not_found(self):
         headers = [
             'HTTP/1.1 404 Not Found',
+            'Server: MyWebServer/0.1 Python/2.7',
+            'Date: %s' % format_date_now()
+        ]
+
+        return '\r\n'.join(headers)
+
+    def not_allowed(self):
+        headers = [
+            'HTTP/1.1 405 Method Not Allowed',
             'Server: MyWebServer/0.1 Python/2.7',
             'Date: %s' % format_date_now()
         ]
@@ -122,7 +132,6 @@ def format_date(time_to_format):
 
 
 def format_date_now():
-    # From https://docs.python.org/2/library/datetime.html#datetime.datetime.now
     return format_date(None)
 
 if __name__ == "__main__":
